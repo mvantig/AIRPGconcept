@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { ChatMessage, GameState, Persona, ChatApiResponse } from "@/types/game";
 import ChatPanel from "./ChatPanel";
 import IllustrationPanel from "./IllustrationPanel";
@@ -14,6 +14,17 @@ interface GameScreenProps {
 
 function createId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
 }
 
 const DEFAULT_GAME_STATE: GameState = {
@@ -39,6 +50,8 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"chat" | "scene">("chat");
+  const isMobile = useIsMobile();
 
   const generateImage = useCallback(async (prompt: string) => {
     setIsGeneratingImage(true);
@@ -238,36 +251,74 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
     <div className="h-screen flex flex-col">
       <StatusBar persona={persona} gameState={gameState} />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Chat */}
+      {isMobile && (
         <div
-          className="w-1/2 flex flex-col border-r"
+          className="flex border-b"
           style={{
             background: "var(--color-surface)",
             borderColor: "var(--color-border)",
           }}
         >
-          <div
-            className="flex items-center justify-between px-4 py-2 border-b"
-            style={{ borderColor: "var(--color-border)" }}
+          <button
+            onClick={() => setMobileTab("chat")}
+            className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
+              mobileTab === "chat"
+                ? "text-purple-400 border-b-2 border-purple-500"
+                : "text-[var(--color-text-dim)]"
+            }`}
           >
-            <h3 className="text-sm font-semibold text-[var(--color-text-dim)] uppercase tracking-wider">
-              Adventure Log
-            </h3>
-            <button
-              onClick={() => setInventoryOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs border transition-all hover:bg-purple-500/10 hover:border-purple-500/50 cursor-pointer"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-text-dim)",
-              }}
+            Adventure Log
+          </button>
+          <button
+            onClick={() => setMobileTab("scene")}
+            className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
+              mobileTab === "scene"
+                ? "text-purple-400 border-b-2 border-purple-500"
+                : "text-[var(--color-text-dim)]"
+            }`}
+          >
+            Scene
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 flex overflow-hidden">
+        <div
+          className={`${
+            isMobile
+              ? mobileTab === "chat"
+                ? "w-full"
+                : "hidden"
+              : "w-1/2"
+          } flex flex-col border-r`}
+          style={{
+            background: "var(--color-surface)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          {!isMobile && (
+            <div
+              className="flex items-center justify-between px-4 py-2 border-b"
+              style={{ borderColor: "var(--color-border)" }}
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-              Inventory ({gameState.inventory.length})
-            </button>
-          </div>
+              <h3 className="text-sm font-semibold text-[var(--color-text-dim)] uppercase tracking-wider">
+                Adventure Log
+              </h3>
+              <button
+                onClick={() => setInventoryOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs border transition-all hover:bg-purple-500/10 hover:border-purple-500/50 cursor-pointer"
+                style={{
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text-dim)",
+                }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                Inventory ({gameState.inventory.length})
+              </button>
+            </div>
+          )}
           <ChatPanel
             messages={messages}
             onSendMessage={sendMessage}
@@ -275,9 +326,14 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
           />
         </div>
 
-        {/* Right Panel - Illustration */}
         <div
-          className="w-1/2"
+          className={`${
+            isMobile
+              ? mobileTab === "scene"
+                ? "w-full"
+                : "hidden"
+              : "w-1/2"
+          }`}
           style={{ background: "var(--color-bg)" }}
         >
           <IllustrationPanel

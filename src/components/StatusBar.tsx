@@ -14,7 +14,7 @@ export default function StatusBar({ persona, gameState }: StatusBarProps) {
 
   return (
     <div
-      className="flex items-center gap-4 px-4 py-2 border-b text-sm"
+      className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 border-b text-sm"
       style={{
         background: "var(--color-surface)",
         borderColor: "var(--color-border)",
