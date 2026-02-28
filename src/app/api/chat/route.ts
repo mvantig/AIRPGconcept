@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGeminiClient, TEXT_MODEL, withRetry } from "@/lib/gemini";
+import { generateText } from "@/lib/llm";
 import {
   buildPersonaGenerationPrompt,
   buildPersonaModificationPrompt,
@@ -26,14 +26,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ChatApiRequest;
     const { phase, messages, gameState, persona, universe, storySummary, userInput } = body;
-    const ai = getGeminiClient();
 
     if (phase === "persona_generate") {
       const prompt = buildPersonaGenerationPrompt(universe);
-      const result = await withRetry(() =>
-        ai.models.generateContent({ model: TEXT_MODEL, contents: prompt })
-      );
-      const text = result.text ?? "";
+      const text = await generateText(prompt);
       const jsonStr = extractJSON(text);
       const personaData = JSON.parse(jsonStr);
 
@@ -54,10 +50,7 @@ export async function POST(request: NextRequest) {
         currentPersonaJson,
         userInput ?? ""
       );
-      const result = await withRetry(() =>
-        ai.models.generateContent({ model: TEXT_MODEL, contents: prompt })
-      );
-      const text = result.text ?? "";
+      const text = await generateText(prompt);
       const jsonStr = extractJSON(text);
       const personaData = JSON.parse(jsonStr);
 
@@ -93,24 +86,17 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const result = await withRetry(() =>
-        ai.models.generateContent({ model: TEXT_MODEL, contents: allContents })
-      );
-
-      const text = result.text ?? "";
+      const text = await generateText(allContents);
       const jsonStr = extractJSON(text);
       const parsed = JSON.parse(jsonStr);
 
       let newSummary = storySummary;
       if (messages.length > 0 && messages.length % 6 === 0) {
         try {
-          const summaryResult = await withRetry(() =>
-            ai.models.generateContent({
-              model: TEXT_MODEL,
-              contents: buildSummaryPrompt(storySummary, last5),
-            })
+          const summaryText = await generateText(
+            buildSummaryPrompt(storySummary, last5)
           );
-          newSummary = summaryResult.text ?? storySummary;
+          newSummary = summaryText || storySummary;
         } catch {
           // Keep existing summary on failure
         }
@@ -129,13 +115,11 @@ export async function POST(request: NextRequest) {
     console.error("Chat API error:", error);
     const raw = error instanceof Error ? error.message : String(error);
 
-    if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota")) {
+    if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota") || raw.includes("rate_limit")) {
       return NextResponse.json(
         {
           error:
-            "Gemini API rate limit reached even after retries. The free tier has very limited requests. " +
-            "Options: (1) Wait a few minutes and try again, (2) Create a new API key in a new project at https://aistudio.google.com/apikey, " +
-            "or (3) Enable billing on your Google Cloud project for unlimited usage.",
+            "API rate limit reached. Wait a minute and try again.",
         },
         { status: 429 }
       );

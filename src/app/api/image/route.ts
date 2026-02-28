@@ -13,6 +13,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY not set — image generation disabled", imageUrl: null },
+        { status: 200 }
+      );
+    }
+
     const styledPrompt = prompt + IMAGE_STYLE_SUFFIX;
     const ai = getGeminiClient();
 
