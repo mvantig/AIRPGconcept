@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
         contents: styledPrompt,
         config: {
           responseModalities: ["TEXT", "IMAGE"],
+          thinkingConfig: { thinkingBudget: 0 },
         },
       })
     );

@@ -78,10 +78,10 @@ RULES:
 1. You MUST respond with ONLY a valid JSON object, no markdown fences, no extra text.
 2. Write vivid, engaging narrative text (2-4 paragraphs) that responds to the player's action.
 3. Update game state based on what happens (items found/lost, HP changes, location changes, stat changes, gold changes).
-4. Set image_prompt to a visual description ONLY when the scene changes significantly (new location, major event, boss encounter). Otherwise set it to null.
+4. Set image_prompt to a vivid visual scene description whenever the location changes, a major event occurs, a new NPC appears, or combat begins. The image_prompt should describe the SCENE visually (environment, lighting, mood, key elements) in 1-2 sentences. Set to null ONLY for minor dialogue or inventory actions where nothing visual changes.
 5. Keep HP between 0 and ${gameState.maxHp}. If HP reaches 0, narrate the character's defeat.
 6. Be fair but challenging. Use the character's stats to determine success/failure of skill checks.
-7. When starting a new adventure, describe the opening scene vividly and set image_prompt for the initial scene.
+7. IMPORTANT: For the very first turn, you MUST set image_prompt to describe the opening scene. Always provide an image_prompt when the player enters a new area.
 
 RESPONSE FORMAT (strict JSON):
 {

@@ -192,6 +192,9 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
 
       if (data.imagePrompt) {
         generateImage(data.imagePrompt);
+      } else {
+        const location = data.stateUpdates?.location || universe;
+        generateImage(`A scenic establishing shot of ${location} in the universe of ${universe}`);
       }
     } catch {
       const errorMsg: ChatMessage = {

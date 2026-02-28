@@ -19,7 +19,7 @@ export const IMAGE_STYLE_SUFFIX =
   ", in the style of a dark fantasy digital painting, highly detailed, dramatic lighting, rich colors, painterly textures";
 
 export const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-2.0-flash-lite";
-export const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.0-flash-preview-image-generation";
+export const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image-preview";
 
 const RETRY_DELAYS = [2000, 5000, 10000, 20000];
 
