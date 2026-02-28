@@ -126,8 +126,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid phase" }, { status: 400 });
   } catch (error) {
     console.error("Chat API error:", error);
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const raw = error instanceof Error ? error.message : String(error);
+
+    if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota")) {
+      return NextResponse.json(
+        {
+          error:
+            "Gemini API rate limit reached. The free tier has limited requests per minute/day. " +
+            "Wait a minute and try again, or create a new API key in a fresh Google Cloud project at https://aistudio.google.com/apikey",
+        },
+        { status: 429 }
+      );
+    }
+
+    return NextResponse.json({ error: raw }, { status: 500 });
   }
 }

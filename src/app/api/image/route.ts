@@ -38,8 +38,15 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Image API error:", error);
-    const message =
-      error instanceof Error ? error.message : "Image generation failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const raw = error instanceof Error ? error.message : String(error);
+
+    if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota")) {
+      return NextResponse.json(
+        { error: "Image generation rate limited. Will use placeholder.", imageUrl: null },
+        { status: 429 }
+      );
+    }
+
+    return NextResponse.json({ error: raw, imageUrl: null }, { status: 500 });
   }
 }

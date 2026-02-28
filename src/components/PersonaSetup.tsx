@@ -15,10 +15,18 @@ export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps)
   const [modifying, setModifying] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCountdown, setRetryCountdown] = useState(0);
+
+  useEffect(() => {
+    if (retryCountdown <= 0) return;
+    const timer = setTimeout(() => setRetryCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retryCountdown]);
 
   const generatePersona = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setRetryCountdown(0);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -34,6 +42,9 @@ export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps)
       });
       if (!res.ok) {
         const errData = await res.json();
+        if (res.status === 429) {
+          setRetryCountdown(60);
+        }
         throw new Error(errData.error || "Failed to generate persona");
       }
       const data = await res.json();
@@ -129,17 +140,35 @@ export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps)
   }
 
   if (!persona) {
+    const isRateLimit = error?.includes("rate limit") || error?.includes("quota");
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <p className="text-[var(--color-danger)] mb-4">
-            {error || "Failed to generate character"}
-          </p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center animate-fade-in max-w-md">
+          <div
+            className="rounded-2xl p-6 border mb-4"
+            style={{
+              background: "var(--color-surface)",
+              borderColor: isRateLimit ? "#f59e0b44" : "var(--color-border)",
+            }}
+          >
+            <p className={`mb-3 text-sm ${isRateLimit ? "text-[var(--color-gold)]" : "text-[var(--color-danger)]"}`}>
+              {isRateLimit ? "API Rate Limit Reached" : "Something Went Wrong"}
+            </p>
+            <p className="text-[var(--color-text-dim)] text-sm mb-4">
+              {error || "Failed to generate character"}
+            </p>
+            {retryCountdown > 0 && (
+              <p className="text-[var(--color-text-dim)] text-xs mb-4">
+                You can retry in <span className="text-purple-400 font-semibold">{retryCountdown}s</span>
+              </p>
+            )}
+          </div>
           <button
             onClick={generatePersona}
-            className="px-6 py-2 rounded-xl bg-purple-600 text-white font-semibold cursor-pointer"
+            disabled={retryCountdown > 0}
+            className="px-6 py-2 rounded-xl bg-purple-600 text-white font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Try Again
+            {retryCountdown > 0 ? `Wait ${retryCountdown}s...` : "Try Again"}
           </button>
         </div>
       </div>
