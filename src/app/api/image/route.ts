@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGeminiClient, IMAGE_MODEL, IMAGE_STYLE_SUFFIX } from "@/lib/gemini";
+import { getGeminiClient, IMAGE_MODEL, IMAGE_STYLE_SUFFIX, withRetry } from "@/lib/gemini";
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,13 +16,15 @@ export async function POST(request: NextRequest) {
     const styledPrompt = prompt + IMAGE_STYLE_SUFFIX;
     const ai = getGeminiClient();
 
-    const response = await ai.models.generateContent({
-      model: IMAGE_MODEL,
-      contents: styledPrompt,
-      config: {
-        responseModalities: ["TEXT", "IMAGE"],
-      },
-    });
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: IMAGE_MODEL,
+        contents: styledPrompt,
+        config: {
+          responseModalities: ["TEXT", "IMAGE"],
+        },
+      })
+    );
 
     const parts = response.candidates?.[0]?.content?.parts ?? [];
     for (const part of parts) {
@@ -42,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota")) {
       return NextResponse.json(
-        { error: "Image generation rate limited. Will use placeholder.", imageUrl: null },
+        { error: "Image generation rate limited.", imageUrl: null },
         { status: 429 }
       );
     }

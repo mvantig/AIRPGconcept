@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGeminiClient, TEXT_MODEL } from "@/lib/gemini";
+import { getGeminiClient, TEXT_MODEL, withRetry } from "@/lib/gemini";
 import {
   buildPersonaGenerationPrompt,
   buildPersonaModificationPrompt,
@@ -20,6 +20,8 @@ function extractJSON(text: string): string {
   return text.trim();
 }
 
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ChatApiRequest;
@@ -28,10 +30,9 @@ export async function POST(request: NextRequest) {
 
     if (phase === "persona_generate") {
       const prompt = buildPersonaGenerationPrompt(universe);
-      const result = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt,
-      });
+      const result = await withRetry(() =>
+        ai.models.generateContent({ model: TEXT_MODEL, contents: prompt })
+      );
       const text = result.text ?? "";
       const jsonStr = extractJSON(text);
       const personaData = JSON.parse(jsonStr);
@@ -53,10 +54,9 @@ export async function POST(request: NextRequest) {
         currentPersonaJson,
         userInput ?? ""
       );
-      const result = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: prompt,
-      });
+      const result = await withRetry(() =>
+        ai.models.generateContent({ model: TEXT_MODEL, contents: prompt })
+      );
       const text = result.text ?? "";
       const jsonStr = extractJSON(text);
       const personaData = JSON.parse(jsonStr);
@@ -93,10 +93,9 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const result = await ai.models.generateContent({
-        model: TEXT_MODEL,
-        contents: allContents,
-      });
+      const result = await withRetry(() =>
+        ai.models.generateContent({ model: TEXT_MODEL, contents: allContents })
+      );
 
       const text = result.text ?? "";
       const jsonStr = extractJSON(text);
@@ -105,10 +104,12 @@ export async function POST(request: NextRequest) {
       let newSummary = storySummary;
       if (messages.length > 0 && messages.length % 6 === 0) {
         try {
-          const summaryResult = await ai.models.generateContent({
-            model: TEXT_MODEL,
-            contents: buildSummaryPrompt(storySummary, last5),
-          });
+          const summaryResult = await withRetry(() =>
+            ai.models.generateContent({
+              model: TEXT_MODEL,
+              contents: buildSummaryPrompt(storySummary, last5),
+            })
+          );
           newSummary = summaryResult.text ?? storySummary;
         } catch {
           // Keep existing summary on failure
@@ -132,8 +133,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Gemini API rate limit reached. The free tier has limited requests per minute/day. " +
-            "Wait a minute and try again, or create a new API key in a fresh Google Cloud project at https://aistudio.google.com/apikey",
+            "Gemini API rate limit reached even after retries. The free tier has very limited requests. " +
+            "Options: (1) Wait a few minutes and try again, (2) Create a new API key in a new project at https://aistudio.google.com/apikey, " +
+            "or (3) Enable billing on your Google Cloud project for unlimited usage.",
         },
         { status: 429 }
       );
