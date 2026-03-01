@@ -37,7 +37,7 @@ export interface PersonaProposal {
   stats: CharacterStats;
 }
 
-export type GamePhase = "universe" | "persona" | "playing";
+export type GamePhase = "menu" | "universe" | "persona" | "playing" | "load";
 
 export type GameMode = "fictional" | "historical";
 

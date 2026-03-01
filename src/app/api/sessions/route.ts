@@ -18,6 +18,9 @@ export async function GET() {
       persona: true,
       gameState: true,
       imageUrl: true,
+      saveType: true,
+      label: true,
+      createdAt: true,
       updatedAt: true,
     },
   });
@@ -34,6 +37,9 @@ export async function GET() {
       hp: gameState.hp,
       maxHp: gameState.maxHp,
       imageUrl: gs.imageUrl,
+      saveType: gs.saveType,
+      label: gs.label,
+      createdAt: gs.createdAt,
       updatedAt: gs.updatedAt,
     };
   });
@@ -57,29 +63,28 @@ export async function POST(request: NextRequest) {
     chatHistory,
     storySummary,
     imageUrl,
+    saveType = "auto",
+    label,
   } = body;
 
-  if (sessionId) {
+  if (saveType === "auto" && sessionId) {
     const existing = await prisma.gameSession.findFirst({
       where: { id: sessionId, userId: session.user.id },
     });
 
-    if (!existing) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    if (existing) {
+      const updated = await prisma.gameSession.update({
+        where: { id: sessionId },
+        data: {
+          gameState: JSON.stringify(gameState),
+          chatHistory: JSON.stringify(chatHistory),
+          storySummary: storySummary || "",
+          persona: JSON.stringify(persona),
+          imageUrl: imageUrl || null,
+        },
+      });
+      return NextResponse.json({ sessionId: updated.id });
     }
-
-    const updated = await prisma.gameSession.update({
-      where: { id: sessionId },
-      data: {
-        gameState: JSON.stringify(gameState),
-        chatHistory: JSON.stringify(chatHistory),
-        storySummary: storySummary || "",
-        persona: JSON.stringify(persona),
-        imageUrl: imageUrl || null,
-      },
-    });
-
-    return NextResponse.json({ sessionId: updated.id });
   }
 
   const created = await prisma.gameSession.create({
@@ -92,6 +97,8 @@ export async function POST(request: NextRequest) {
       chatHistory: JSON.stringify(chatHistory || []),
       storySummary: storySummary || "",
       imageUrl: imageUrl || null,
+      saveType,
+      label: label || null,
     },
   });
 

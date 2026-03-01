@@ -20,6 +20,7 @@ interface GameScreenProps {
   universe: string;
   gameMode: GameMode;
   loadedSession?: LoadedSession;
+  onBackToMenu: () => void;
 }
 
 function createId(): string {
@@ -46,7 +47,7 @@ const DEFAULT_GAME_STATE: GameState = {
   gold: 0,
 };
 
-export default function GameScreen({ persona, universe, gameMode, loadedSession }: GameScreenProps) {
+export default function GameScreen({ persona, universe, gameMode, loadedSession, onBackToMenu }: GameScreenProps) {
   const [gameState, setGameState] = useState<GameState>(
     loadedSession?.gameState ?? { ...DEFAULT_GAME_STATE, stats: { ...persona.stats } }
   );
@@ -68,6 +69,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession 
   const [sessionId, setSessionId] = useState<string | null>(
     loadedSession?.sessionId ?? null
   );
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const saveInFlight = useRef(false);
 
@@ -116,6 +118,36 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession 
     },
     [sessionId, universe, gameMode, persona]
   );
+
+  const manualSave = useCallback(async () => {
+    if (!initialized || messages.length === 0) return;
+    setSaveNotice("Saving...");
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          universe,
+          gameMode,
+          persona,
+          gameState,
+          chatHistory: messages,
+          storySummary,
+          imageUrl: currentImage,
+          saveType: "manual",
+          label: `${gameState.location} — HP ${gameState.hp}/${gameState.maxHp}`,
+        }),
+      });
+      if (res.ok) {
+        setSaveNotice("Game saved!");
+      } else {
+        setSaveNotice("Save failed");
+      }
+    } catch {
+      setSaveNotice("Save failed");
+    }
+    setTimeout(() => setSaveNotice(null), 2000);
+  }, [initialized, messages, universe, gameMode, persona, gameState, storySummary, currentImage]);
 
   const generateImage = useCallback(async (prompt: string) => {
     setIsGeneratingImage(true);
@@ -386,29 +418,60 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession 
             borderColor: "var(--color-border)",
           }}
         >
-          {!isMobile && (
-            <div
-              className="flex items-center justify-between px-4 py-2 border-b"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <h3 className="text-sm font-semibold text-[var(--color-text-dim)] uppercase tracking-wider">
-                Adventure Log
-              </h3>
+          <div
+            className="flex items-center justify-between px-3 py-2 border-b"
+            style={{ borderColor: "var(--color-border)" }}
+          >
+            <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setInventoryOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs border transition-all hover:bg-purple-500/10 hover:border-purple-500/50 cursor-pointer"
+                onClick={onBackToMenu}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-all hover:bg-purple-500/10 hover:border-purple-500/50 cursor-pointer"
                 style={{
                   borderColor: "var(--color-border)",
                   color: "var(--color-text-dim)",
                 }}
+                title="Back to menu"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" />
                 </svg>
-                Inventory ({gameState.inventory.length})
+                Menu
+              </button>
+              <button
+                onClick={manualSave}
+                disabled={!initialized || messages.length === 0}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-all hover:bg-green-500/10 hover:border-green-500/50 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text-dim)",
+                }}
+                title="Save game"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                {saveNotice || "Save"}
               </button>
             </div>
-          )}
+            {!isMobile && (
+              <h3 className="text-sm font-semibold text-[var(--color-text-dim)] uppercase tracking-wider">
+                Adventure Log
+              </h3>
+            )}
+            <button
+              onClick={() => setInventoryOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs border transition-all hover:bg-purple-500/10 hover:border-purple-500/50 cursor-pointer"
+              style={{
+                borderColor: "var(--color-border)",
+                color: "var(--color-text-dim)",
+              }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Inventory ({gameState.inventory.length})
+            </button>
+          </div>
           <ChatPanel
             messages={messages}
             onSendMessage={sendMessage}

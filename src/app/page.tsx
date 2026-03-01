@@ -1,21 +1,39 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import type { Persona, GamePhase, GameMode, UniverseConfig } from "@/types/game";
 import LoginButton from "@/components/LoginButton";
+import MainMenu from "@/components/MainMenu";
 import UniverseSetup from "@/components/UniverseSetup";
 import PersonaSetup from "@/components/PersonaSetup";
+import LoadGameScreen from "@/components/LoadGameScreen";
 import GameScreen, { type LoadedSession } from "@/components/GameScreen";
 
 export default function Home() {
   const { data: session, status } = useSession();
-  const [phase, setPhase] = useState<GamePhase>("universe");
+  const [phase, setPhase] = useState<GamePhase>("menu");
   const [universe, setUniverse] = useState("");
   const [gameMode, setGameMode] = useState<GameMode>("fictional");
   const [persona, setPersona] = useState<Persona | null>(null);
   const [loadedSession, setLoadedSession] = useState<LoadedSession | undefined>();
   const [loadingSession, setLoadingSession] = useState(false);
+  const [latestSaveId, setLatestSaveId] = useState<string | null>(null);
+  const [hasSaves, setHasSaves] = useState(false);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/sessions")
+      .then((r) => r.json())
+      .then((data) => {
+        const saves = data.sessions || [];
+        setHasSaves(saves.length > 0);
+        if (saves.length > 0) {
+          setLatestSaveId(saves[0].id);
+        }
+      })
+      .catch(() => {});
+  }, [status]);
 
   const handleUniverseSubmit = (config: UniverseConfig) => {
     setUniverse(config.setting);
@@ -56,6 +74,19 @@ export default function Home() {
     }
   }, []);
 
+  const handleBackToMenu = useCallback(() => {
+    setPhase("menu");
+    setLoadedSession(undefined);
+    fetch("/api/sessions")
+      .then((r) => r.json())
+      .then((data) => {
+        const saves = data.sessions || [];
+        setHasSaves(saves.length > 0);
+        if (saves.length > 0) setLatestSaveId(saves[0].id);
+      })
+      .catch(() => {});
+  }, []);
+
   if (status === "loading" || loadingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -73,11 +104,34 @@ export default function Home() {
     return <LoginButton />;
   }
 
+  if (phase === "menu") {
+    return (
+      <MainMenu
+        user={session.user}
+        hasLatestSave={!!latestSaveId}
+        hasSaves={hasSaves}
+        onNewGame={() => setPhase("universe")}
+        onContinue={() => {
+          if (latestSaveId) handleLoadSession(latestSaveId);
+        }}
+        onLoadGame={() => setPhase("load")}
+      />
+    );
+  }
+
+  if (phase === "load") {
+    return (
+      <LoadGameScreen
+        onLoad={handleLoadSession}
+        onBack={handleBackToMenu}
+      />
+    );
+  }
+
   if (phase === "universe") {
     return (
       <UniverseSetup
         onSubmit={handleUniverseSubmit}
-        onLoadSession={handleLoadSession}
         user={session.user}
       />
     );
@@ -100,6 +154,7 @@ export default function Home() {
         universe={universe}
         gameMode={gameMode}
         loadedSession={loadedSession}
+        onBackToMenu={handleBackToMenu}
       />
     );
   }
