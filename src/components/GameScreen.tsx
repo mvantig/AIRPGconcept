@@ -1,16 +1,25 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { ChatMessage, GameState, Persona, ChatApiResponse, GameMode } from "@/types/game";
 import ChatPanel from "./ChatPanel";
 import IllustrationPanel from "./IllustrationPanel";
 import StatusBar from "./StatusBar";
 import InventoryDrawer from "./InventoryDrawer";
 
+export interface LoadedSession {
+  sessionId: string;
+  gameState: GameState;
+  chatHistory: ChatMessage[];
+  storySummary: string;
+  imageUrl: string | null;
+}
+
 interface GameScreenProps {
   persona: Persona;
   universe: string;
   gameMode: GameMode;
+  loadedSession?: LoadedSession;
 }
 
 function createId(): string {
@@ -37,23 +46,30 @@ const DEFAULT_GAME_STATE: GameState = {
   gold: 0,
 };
 
-export default function GameScreen({ persona, universe, gameMode }: GameScreenProps) {
-  const [gameState, setGameState] = useState<GameState>({
-    ...DEFAULT_GAME_STATE,
-    stats: { ...persona.stats },
-  });
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [storySummary, setStorySummary] = useState("");
+export default function GameScreen({ persona, universe, gameMode, loadedSession }: GameScreenProps) {
+  const [gameState, setGameState] = useState<GameState>(
+    loadedSession?.gameState ?? { ...DEFAULT_GAME_STATE, stats: { ...persona.stats } }
+  );
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    loadedSession?.chatHistory ?? []
+  );
+  const [storySummary, setStorySummary] = useState(
+    loadedSession?.storySummary ?? ""
+  );
   const [currentImage, setCurrentImage] = useState<string | null>(
-    persona.portraitUrl || null
+    loadedSession?.imageUrl ?? persona.portraitUrl ?? null
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const [initialized, setInitialized] = useState(!!loadedSession);
   const [mobileTab, setMobileTab] = useState<"chat" | "scene">("chat");
   const [tokens, setTokens] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(
+    loadedSession?.sessionId ?? null
+  );
   const isMobile = useIsMobile();
+  const saveInFlight = useRef(false);
 
   useEffect(() => {
     fetch("/api/tokens")
@@ -61,6 +77,45 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
       .then((d) => setTokens(d.tokens ?? null))
       .catch(() => {});
   }, []);
+
+  const saveGame = useCallback(
+    async (
+      updatedState: GameState,
+      updatedMessages: ChatMessage[],
+      updatedSummary: string,
+      updatedImage: string | null
+    ) => {
+      if (saveInFlight.current) return;
+      saveInFlight.current = true;
+      try {
+        const res = await fetch("/api/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            universe,
+            gameMode,
+            persona,
+            gameState: updatedState,
+            chatHistory: updatedMessages,
+            storySummary: updatedSummary,
+            imageUrl: updatedImage,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.sessionId && !sessionId) {
+            setSessionId(data.sessionId);
+          }
+        }
+      } catch {
+        // Save failure is non-critical
+      } finally {
+        saveInFlight.current = false;
+      }
+    },
+    [sessionId, universe, gameMode, persona]
+  );
 
   const generateImage = useCallback(async (prompt: string) => {
     setIsGeneratingImage(true);
@@ -128,26 +183,32 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
           content: data.narrative,
           timestamp: Date.now(),
         };
-        setMessages((prev) => [...prev, assistantMsg]);
+        const allMessages = [...updatedMessages, assistantMsg];
+        setMessages(allMessages);
 
+        let newState = gameState;
         if (data.stateUpdates) {
-          setGameState((prev) => ({
-            ...prev,
+          newState = {
+            ...gameState,
             ...data.stateUpdates,
             stats: {
-              ...prev.stats,
+              ...gameState.stats,
               ...(data.stateUpdates?.stats || {}),
             },
-          }));
+          };
+          setGameState(newState);
         }
 
+        const newSummary = data.storySummary || storySummary;
         if (data.storySummary) {
-          setStorySummary(data.storySummary);
+          setStorySummary(newSummary);
         }
 
         if (data.imagePrompt) {
           generateImage(data.imagePrompt);
         }
+
+        saveGame(newState, allMessages, newSummary, currentImage);
       } catch (err) {
         const errorMsg: ChatMessage = {
           id: createId(),
@@ -160,7 +221,7 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
         setIsLoading(false);
       }
     },
-    [messages, gameState, persona, universe, gameMode, storySummary, generateImage]
+    [messages, gameState, persona, universe, gameMode, storySummary, currentImage, generateImage, saveGame]
   );
 
   const startAdventure = useCallback(async () => {
@@ -201,14 +262,17 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
         content: data.narrative,
         timestamp: Date.now(),
       };
-      setMessages([assistantMsg]);
+      const allMessages = [assistantMsg];
+      setMessages(allMessages);
 
+      let newState = { ...DEFAULT_GAME_STATE, stats: { ...persona.stats } };
       if (data.stateUpdates) {
-        setGameState((prev) => ({
-          ...prev,
+        newState = {
+          ...newState,
           ...data.stateUpdates,
-          stats: { ...prev.stats, ...(data.stateUpdates?.stats || {}) },
-        }));
+          stats: { ...newState.stats, ...(data.stateUpdates?.stats || {}) },
+        };
+        setGameState(newState);
       }
 
       if (data.imagePrompt) {
@@ -217,6 +281,8 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
         const location = data.stateUpdates?.location || universe;
         generateImage(`A scenic establishing shot of ${location} in the universe of ${universe}`);
       }
+
+      saveGame(newState, allMessages, "", null);
     } catch {
       const errorMsg: ChatMessage = {
         id: createId(),
@@ -228,7 +294,7 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
     } finally {
       setIsLoading(false);
     }
-  }, [initialized, persona, universe, gameMode, generateImage]);
+  }, [initialized, persona, universe, gameMode, generateImage, saveGame]);
 
   if (!initialized) {
     return (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import type { GameMode, UniverseConfig } from "@/types/game";
+import SavedGames from "./SavedGames";
 
 interface UserInfo {
   name?: string | null;
@@ -12,6 +13,7 @@ interface UserInfo {
 
 interface UniverseSetupProps {
   onSubmit: (config: UniverseConfig) => void;
+  onLoadSession: (sessionId: string) => void;
   user?: UserInfo;
 }
 
@@ -89,7 +91,7 @@ const HISTORICAL_ERAS = [
   },
 ];
 
-export default function UniverseSetup({ onSubmit, user }: UniverseSetupProps) {
+export default function UniverseSetup({ onSubmit, onLoadSession, user }: UniverseSetupProps) {
   const [mode, setMode] = useState<GameMode>("fictional");
   const [fictionalInput, setFictionalInput] = useState("");
   const [historicalInput, setHistoricalInput] = useState("");
@@ -386,6 +388,8 @@ export default function UniverseSetup({ onSubmit, user }: UniverseSetupProps) {
             </div>
           </div>
         )}
+
+        <SavedGames onLoad={onLoadSession} />
       </div>
     </div>
   );

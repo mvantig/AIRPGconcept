@@ -8,16 +8,34 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?       @unique
   emailVerified DateTime?
   image         String?
-  tokens        Int       @default(50)
+  tokens        Int           @default(50)
   accounts      Account[]
   sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  gameSessions  GameSession[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model GameSession {
+  id           String   @id @default(cuid())
+  userId       String
+  universe     String
+  gameMode     String   @default("fictional")
+  persona      String
+  gameState    String
+  chatHistory  String
+  storySummary String   @default("")
+  imageUrl     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
 }
 
 model Account {
