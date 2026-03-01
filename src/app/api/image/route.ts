@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getGeminiClient, IMAGE_MODEL, IMAGE_STYLE_SUFFIX, withRetry } from "@/lib/gemini";
+import { getGeminiClient, IMAGE_MODEL, IMAGE_STYLE_SUFFIX, HISTORICAL_IMAGE_STYLE_SUFFIX, withRetry } from "@/lib/gemini";
 
 export const maxDuration = 60;
 
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { prompt } = await request.json();
+    const { prompt, gameMode } = await request.json();
     if (!prompt) {
       return NextResponse.json(
         { error: "prompt is required" },
@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const styledPrompt = prompt + IMAGE_STYLE_SUFFIX;
+    const styleSuffix = gameMode === "historical" ? HISTORICAL_IMAGE_STYLE_SUFFIX : IMAGE_STYLE_SUFFIX;
+    const styledPrompt = prompt + styleSuffix;
     const ai = getGeminiClient();
 
     const response = await withRetry(() =>

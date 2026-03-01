@@ -39,11 +39,19 @@ export interface PersonaProposal {
 
 export type GamePhase = "universe" | "persona" | "playing";
 
+export type GameMode = "fictional" | "historical";
+
+export interface UniverseConfig {
+  mode: GameMode;
+  setting: string;
+}
+
 export interface ChatApiRequest {
   messages: ChatMessage[];
   gameState: GameState;
   persona: Persona;
   universe: string;
+  gameMode: GameMode;
   storySummary: string;
   phase: "persona_generate" | "persona_modify" | "game_turn";
   userInput?: string;

@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Persona, PersonaProposal } from "@/types/game";
+import type { Persona, PersonaProposal, GameMode } from "@/types/game";
 
 interface PersonaSetupProps {
   universe: string;
+  gameMode: GameMode;
   onConfirm: (persona: Persona) => void;
 }
 
-export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps) {
+export default function PersonaSetup({ universe, gameMode, onConfirm }: PersonaSetupProps) {
   const [persona, setPersona] = useState<PersonaProposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [modifyInput, setModifyInput] = useState("");
@@ -34,6 +35,7 @@ export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps)
         body: JSON.stringify({
           phase: "persona_generate",
           universe,
+          gameMode,
           messages: [],
           gameState: {},
           persona: {},
@@ -56,7 +58,7 @@ export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps)
     } finally {
       setLoading(false);
     }
-  }, [universe]);
+  }, [universe, gameMode]);
 
   useEffect(() => {
     generatePersona();
@@ -75,6 +77,7 @@ export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps)
         body: JSON.stringify({
           phase: "persona_modify",
           universe,
+          gameMode,
           messages: [],
           gameState: {},
           persona,
@@ -108,7 +111,10 @@ export default function PersonaSetup({ universe, onConfirm }: PersonaSetupProps)
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: `Portrait of ${persona.name}, an RPG character from the universe "${universe}". ${persona.backstory}. Close-up character portrait, facing the viewer`,
+          prompt: gameMode === "historical"
+            ? `Portrait of ${persona.name}, a historical figure from ${universe}. ${persona.backstory}. Close-up character portrait in period-accurate clothing, facing the viewer`
+            : `Portrait of ${persona.name}, an RPG character from the universe "${universe}". ${persona.backstory}. Close-up character portrait, facing the viewer`,
+          gameMode,
         }),
       });
 

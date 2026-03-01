@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import type { Persona, GamePhase } from "@/types/game";
+import type { Persona, GamePhase, GameMode, UniverseConfig } from "@/types/game";
 import LoginButton from "@/components/LoginButton";
 import UniverseSetup from "@/components/UniverseSetup";
 import PersonaSetup from "@/components/PersonaSetup";
@@ -12,6 +12,7 @@ export default function Home() {
   const { data: session, status } = useSession();
   const [phase, setPhase] = useState<GamePhase>("universe");
   const [universe, setUniverse] = useState("");
+  const [gameMode, setGameMode] = useState<GameMode>("fictional");
   const [persona, setPersona] = useState<Persona | null>(null);
 
   if (status === "loading") {
@@ -26,8 +27,9 @@ export default function Home() {
     return <LoginButton />;
   }
 
-  const handleUniverseSubmit = (uni: string) => {
-    setUniverse(uni);
+  const handleUniverseSubmit = (config: UniverseConfig) => {
+    setUniverse(config.setting);
+    setGameMode(config.mode);
     setPhase("persona");
   };
 
@@ -42,12 +44,18 @@ export default function Home() {
 
   if (phase === "persona") {
     return (
-      <PersonaSetup universe={universe} onConfirm={handlePersonaConfirm} />
+      <PersonaSetup
+        universe={universe}
+        gameMode={gameMode}
+        onConfirm={handlePersonaConfirm}
+      />
     );
   }
 
   if (phase === "playing" && persona) {
-    return <GameScreen persona={persona} universe={universe} />;
+    return (
+      <GameScreen persona={persona} universe={universe} gameMode={gameMode} />
+    );
   }
 
   return null;

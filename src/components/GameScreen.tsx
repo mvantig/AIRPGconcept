@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import type { ChatMessage, GameState, Persona, ChatApiResponse } from "@/types/game";
+import type { ChatMessage, GameState, Persona, ChatApiResponse, GameMode } from "@/types/game";
 import ChatPanel from "./ChatPanel";
 import IllustrationPanel from "./IllustrationPanel";
 import StatusBar from "./StatusBar";
@@ -10,6 +10,7 @@ import InventoryDrawer from "./InventoryDrawer";
 interface GameScreenProps {
   persona: Persona;
   universe: string;
+  gameMode: GameMode;
 }
 
 function createId(): string {
@@ -36,7 +37,7 @@ const DEFAULT_GAME_STATE: GameState = {
   gold: 0,
 };
 
-export default function GameScreen({ persona, universe }: GameScreenProps) {
+export default function GameScreen({ persona, universe, gameMode }: GameScreenProps) {
   const [gameState, setGameState] = useState<GameState>({
     ...DEFAULT_GAME_STATE,
     stats: { ...persona.stats },
@@ -59,7 +60,7 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
       const res = await fetch("/api/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, gameMode }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -72,7 +73,7 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
     } finally {
       setIsGeneratingImage(false);
     }
-  }, []);
+  }, [gameMode]);
 
   const sendMessage = useCallback(
     async (userInput: string) => {
@@ -96,6 +97,7 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
             gameState,
             persona,
             universe,
+            gameMode,
             storySummary,
             userInput,
           }),
@@ -146,7 +148,7 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
         setIsLoading(false);
       }
     },
-    [messages, gameState, persona, universe, storySummary, generateImage]
+    [messages, gameState, persona, universe, gameMode, storySummary, generateImage]
   );
 
   const startAdventure = useCallback(async () => {
@@ -164,9 +166,12 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
           gameState: { ...DEFAULT_GAME_STATE, stats: { ...persona.stats } },
           persona,
           universe,
+          gameMode,
           storySummary: "",
           userInput:
-            "Begin the adventure. Describe the opening scene vividly and set up the initial situation.",
+            gameMode === "historical"
+              ? "Begin the adventure. Describe the opening historical scene vividly with accurate period details — architecture, people, sounds, smells. Set up an engaging initial situation rooted in real events of this era."
+              : "Begin the adventure. Describe the opening scene vividly and set up the initial situation.",
         }),
       });
 
@@ -207,7 +212,7 @@ export default function GameScreen({ persona, universe }: GameScreenProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [initialized, persona, universe, generateImage]);
+  }, [initialized, persona, universe, gameMode, generateImage]);
 
   if (!initialized) {
     return (
