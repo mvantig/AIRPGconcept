@@ -35,7 +35,7 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div
@@ -90,7 +90,7 @@ export default function ChatPanel({
 
       <form
         onSubmit={handleSubmit}
-        className="p-3 border-t flex gap-2"
+        className="p-3 border-t flex gap-2 shrink-0"
         style={{ borderColor: "var(--color-border)" }}
       >
         <input

@@ -84,12 +84,13 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
     async (
       updatedState: GameState,
       updatedMessages: ChatMessage[],
-      updatedSummary: string,
-      updatedImage: string | null
+      updatedSummary: string
     ) => {
       if (saveInFlight.current) return;
       saveInFlight.current = true;
       try {
+        const { portraitUrl: _strip, ...personaClean } = persona;
+        void _strip;
         const res = await fetch("/api/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -97,11 +98,11 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
             sessionId,
             universe,
             gameMode,
-            persona,
+            persona: personaClean,
             gameState: updatedState,
             chatHistory: updatedMessages,
             storySummary: updatedSummary,
-            imageUrl: updatedImage,
+            imageUrl: null,
           }),
         });
         if (res.ok) {
@@ -123,17 +124,19 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
     if (!initialized || messages.length === 0) return;
     setSaveNotice("Saving...");
     try {
+      const { portraitUrl: _strip, ...personaClean } = persona;
+      void _strip;
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           universe,
           gameMode,
-          persona,
+          persona: personaClean,
           gameState,
           chatHistory: messages,
           storySummary,
-          imageUrl: currentImage,
+          imageUrl: null,
           saveType: "manual",
           label: `${gameState.location} — HP ${gameState.hp}/${gameState.maxHp}`,
         }),
@@ -141,13 +144,15 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
       if (res.ok) {
         setSaveNotice("Game saved!");
       } else {
+        const err = await res.json().catch(() => ({}));
+        console.error("Save failed:", err);
         setSaveNotice("Save failed");
       }
     } catch {
       setSaveNotice("Save failed");
     }
     setTimeout(() => setSaveNotice(null), 2000);
-  }, [initialized, messages, universe, gameMode, persona, gameState, storySummary, currentImage]);
+  }, [initialized, messages, universe, gameMode, persona, gameState, storySummary]);
 
   const generateImage = useCallback(async (prompt: string) => {
     setIsGeneratingImage(true);
@@ -240,7 +245,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
           generateImage(data.imagePrompt);
         }
 
-        saveGame(newState, allMessages, newSummary, currentImage);
+        saveGame(newState, allMessages, newSummary);
       } catch (err) {
         const errorMsg: ChatMessage = {
           id: createId(),
@@ -253,7 +258,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
         setIsLoading(false);
       }
     },
-    [messages, gameState, persona, universe, gameMode, storySummary, currentImage, generateImage, saveGame]
+    [messages, gameState, persona, universe, gameMode, storySummary, generateImage, saveGame]
   );
 
   const startAdventure = useCallback(async () => {
@@ -314,7 +319,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
         generateImage(`A scenic establishing shot of ${location} in the universe of ${universe}`);
       }
 
-      saveGame(newState, allMessages, "", null);
+      saveGame(newState, allMessages, "");
     } catch {
       const errorMsg: ChatMessage = {
         id: createId(),
@@ -412,14 +417,14 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
                 ? "w-full"
                 : "hidden"
               : "w-1/2"
-          } flex flex-col border-r`}
+          } flex flex-col border-r min-h-0`}
           style={{
             background: "var(--color-surface)",
             borderColor: "var(--color-border)",
           }}
         >
           <div
-            className="flex items-center justify-between px-3 py-2 border-b"
+            className="flex items-center justify-between px-3 py-2 border-b shrink-0"
             style={{ borderColor: "var(--color-border)" }}
           >
             <div className="flex items-center gap-1.5">

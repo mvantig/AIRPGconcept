@@ -68,39 +68,59 @@ export async function POST(request: NextRequest) {
   } = body;
 
   if (saveType === "auto" && sessionId) {
-    const existing = await prisma.gameSession.findFirst({
-      where: { id: sessionId, userId: session.user.id },
-    });
-
-    if (existing) {
-      const updated = await prisma.gameSession.update({
-        where: { id: sessionId },
-        data: {
-          gameState: JSON.stringify(gameState),
-          chatHistory: JSON.stringify(chatHistory),
-          storySummary: storySummary || "",
-          persona: JSON.stringify(persona),
-          imageUrl: imageUrl || null,
-        },
+    try {
+      const existing = await prisma.gameSession.findFirst({
+        where: { id: sessionId, userId: session.user.id },
       });
-      return NextResponse.json({ sessionId: updated.id });
+
+      if (existing) {
+        const personaToSave = { ...persona };
+        if (personaToSave.portraitUrl && personaToSave.portraitUrl.length > 1000) {
+          delete personaToSave.portraitUrl;
+        }
+
+        const updated = await prisma.gameSession.update({
+          where: { id: sessionId },
+          data: {
+            gameState: JSON.stringify(gameState),
+            chatHistory: JSON.stringify(chatHistory),
+            storySummary: storySummary || "",
+            persona: JSON.stringify(personaToSave),
+            imageUrl: imageUrl && imageUrl.length < 1000 ? imageUrl : null,
+          },
+        });
+        return NextResponse.json({ sessionId: updated.id });
+      }
+    } catch (error) {
+      console.error("Auto-save error:", error);
     }
   }
 
-  const created = await prisma.gameSession.create({
-    data: {
-      userId: session.user.id,
-      universe,
-      gameMode: gameMode || "fictional",
-      persona: JSON.stringify(persona),
-      gameState: JSON.stringify(gameState),
-      chatHistory: JSON.stringify(chatHistory || []),
-      storySummary: storySummary || "",
-      imageUrl: imageUrl || null,
-      saveType,
-      label: label || null,
-    },
-  });
+  try {
+    const personaToSave = { ...persona };
+    if (personaToSave.portraitUrl && personaToSave.portraitUrl.length > 1000) {
+      delete personaToSave.portraitUrl;
+    }
 
-  return NextResponse.json({ sessionId: created.id });
+    const created = await prisma.gameSession.create({
+      data: {
+        userId: session.user.id,
+        universe,
+        gameMode: gameMode || "fictional",
+        persona: JSON.stringify(personaToSave),
+        gameState: JSON.stringify(gameState),
+        chatHistory: JSON.stringify(chatHistory || []),
+        storySummary: storySummary || "",
+        imageUrl: imageUrl && imageUrl.length < 1000 ? imageUrl : null,
+        saveType,
+        label: label || null,
+      },
+    });
+
+    return NextResponse.json({ sessionId: created.id });
+  } catch (error) {
+    console.error("Session save error:", error);
+    const msg = error instanceof Error ? error.message : "Failed to save";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
