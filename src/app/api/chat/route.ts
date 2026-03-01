@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { generateText } from "@/lib/llm";
 import {
   buildPersonaGenerationPrompt,
@@ -23,6 +24,11 @@ function extractJSON(text: string): string {
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = (await request.json()) as ChatApiRequest;
     const { phase, messages, gameState, persona, universe, storySummary, userInput } = body;

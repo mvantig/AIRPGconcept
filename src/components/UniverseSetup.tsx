@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
+
+interface UserInfo {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
 
 interface UniverseSetupProps {
   onSubmit: (universe: string) => void;
+  user?: UserInfo;
 }
 
 const SUGGESTIONS = [
@@ -17,7 +25,7 @@ const SUGGESTIONS = [
   "Victorian Steampunk London",
 ];
 
-export default function UniverseSetup({ onSubmit }: UniverseSetupProps) {
+export default function UniverseSetup({ onSubmit, user }: UniverseSetupProps) {
   const [universe, setUniverse] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,7 +34,39 @@ export default function UniverseSetup({ onSubmit }: UniverseSetupProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      {user && (
+        <div className="absolute top-4 right-4 flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {user.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.image}
+                alt={user.name || "User"}
+                className="w-8 h-8 rounded-full border border-purple-500/50"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xs">
+                {user.name?.charAt(0) || "?"}
+              </div>
+            )}
+            <span className="text-sm text-[var(--color-text-dim)]">
+              {user.name}
+            </span>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-red-500/10 hover:border-red-500/50 cursor-pointer"
+            style={{
+              borderColor: "var(--color-border)",
+              color: "var(--color-text-dim)",
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
+
       <div className="w-full max-w-2xl animate-fade-in">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent">
