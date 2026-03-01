@@ -63,6 +63,7 @@ export interface ChatApiResponse {
   imagePrompt?: string | null;
   persona?: PersonaProposal;
   storySummary?: string;
+  tokensRemaining?: number;
 }
 
 export interface ImageApiRequest {

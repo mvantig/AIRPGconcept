@@ -52,7 +52,15 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "scene">("chat");
+  const [tokens, setTokens] = useState<number | null>(null);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    fetch("/api/tokens")
+      .then((r) => r.json())
+      .then((d) => setTokens(d.tokens ?? null))
+      .catch(() => {});
+  }, []);
 
   const generateImage = useCallback(async (prompt: string) => {
     setIsGeneratingImage(true);
@@ -62,11 +70,12 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, gameMode }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.imageUrl) {
-          setCurrentImage(data.imageUrl);
-        }
+      const data = await res.json();
+      if (data.tokensRemaining !== undefined) {
+        setTokens(data.tokensRemaining);
+      }
+      if (res.ok && data.imageUrl) {
+        setCurrentImage(data.imageUrl);
       }
     } catch {
       // Image generation failure is non-critical
@@ -103,12 +112,15 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
           }),
         });
 
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Failed to get response");
+        const data = await res.json();
+
+        if (data.tokensRemaining !== undefined) {
+          setTokens(data.tokensRemaining);
         }
 
-        const data: ChatApiResponse = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to get response");
+        }
 
         const assistantMsg: ChatMessage = {
           id: createId(),
@@ -175,9 +187,13 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to start adventure");
-
       const data: ChatApiResponse = await res.json();
+
+      if (data.tokensRemaining !== undefined) {
+        setTokens(data.tokensRemaining);
+      }
+
+      if (!res.ok) throw new Error("Failed to start adventure");
 
       const assistantMsg: ChatMessage = {
         id: createId(),
@@ -257,7 +273,7 @@ export default function GameScreen({ persona, universe, gameMode }: GameScreenPr
 
   return (
     <div className="h-screen flex flex-col">
-      <StatusBar persona={persona} gameState={gameState} />
+      <StatusBar persona={persona} gameState={gameState} tokens={tokens} />
 
       {isMobile && (
         <div

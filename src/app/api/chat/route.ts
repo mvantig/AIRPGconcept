@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { generateText } from "@/lib/llm";
+import { deductTokens } from "@/lib/tokens";
 import {
   buildPersonaGenerationPrompt,
   buildPersonaModificationPrompt,
@@ -8,6 +9,8 @@ import {
   buildSummaryPrompt,
 } from "@/lib/prompts";
 import type { ChatApiRequest, ChatApiResponse } from "@/types/game";
+
+const TEXT_TOKEN_COST = 1;
 
 function extractJSON(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -25,8 +28,16 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const tokenResult = await deductTokens(session.user.id, TEXT_TOKEN_COST);
+  if (!tokenResult.success) {
+    return NextResponse.json(
+      { error: tokenResult.error, tokensRemaining: tokenResult.remaining },
+      { status: 403 }
+    );
   }
 
   try {
@@ -42,6 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         narrative: `I've created a character for the "${universe}" universe. Meet **${personaData.name}**!`,
         persona: personaData,
+        tokensRemaining: tokenResult.remaining,
       } as ChatApiResponse);
     }
 
@@ -64,6 +76,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         narrative: `Character updated! Here's the revised **${personaData.name}**.`,
         persona: personaData,
+        tokensRemaining: tokenResult.remaining,
       } as ChatApiResponse);
     }
 
@@ -115,6 +128,7 @@ export async function POST(request: NextRequest) {
         stateUpdates: parsed.state_updates,
         imagePrompt: parsed.image_prompt,
         storySummary: newSummary,
+        tokensRemaining: tokenResult.remaining,
       } as ChatApiResponse);
     }
 

@@ -5,12 +5,15 @@ import type { GameState, Persona } from "@/types/game";
 interface StatusBarProps {
   persona: Persona;
   gameState: GameState;
+  tokens: number | null;
 }
 
-export default function StatusBar({ persona, gameState }: StatusBarProps) {
+export default function StatusBar({ persona, gameState, tokens }: StatusBarProps) {
   const hpPercent = Math.max(0, (gameState.hp / gameState.maxHp) * 100);
   const hpColor =
     hpPercent > 60 ? "#22c55e" : hpPercent > 30 ? "#f59e0b" : "#ef4444";
+  const tokenColor =
+    tokens === null ? "var(--color-text-dim)" : tokens > 10 ? "#a78bfa" : tokens > 0 ? "#f59e0b" : "#ef4444";
 
   return (
     <div
@@ -99,6 +102,18 @@ export default function StatusBar({ persona, gameState }: StatusBarProps) {
           </div>
         </>
       )}
+
+      <div className="ml-auto flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5" style={{ color: tokenColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-xs font-semibold tabular-nums" style={{ color: tokenColor }}>
+          {tokens !== null ? tokens : "—"}
+        </span>
+        <span className="text-xs" style={{ color: "var(--color-text-dim)" }}>
+          tokens
+        </span>
+      </div>
     </div>
   );
 }
