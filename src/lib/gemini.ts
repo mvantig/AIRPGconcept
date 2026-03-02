@@ -15,12 +15,6 @@ export function getGeminiClient(): GoogleGenAI {
   return client;
 }
 
-export const IMAGE_STYLE_SUFFIX =
-  ", in the style of a dark fantasy digital painting, highly detailed, dramatic lighting, rich colors, painterly textures";
-
-export const HISTORICAL_IMAGE_STYLE_SUFFIX =
-  ", in the style of a historically accurate oil painting, rich period details, authentic architecture and clothing, warm natural lighting, museum-quality illustration";
-
 export const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-2.0-flash-lite";
 export const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image-preview";
 

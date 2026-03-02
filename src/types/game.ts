@@ -7,6 +7,7 @@ export interface Persona {
   backstory: string;
   stats: CharacterStats;
   portraitUrl?: string;
+  imageStyle?: string;
 }
 
 export interface GameState {
@@ -35,6 +36,7 @@ export interface PersonaProposal {
   name: string;
   backstory: string;
   stats: CharacterStats;
+  image_style?: string;
 }
 
 export type GamePhase = "menu" | "universe" | "persona" | "playing" | "load";
@@ -62,6 +64,7 @@ export interface ChatApiResponse {
   stateUpdates?: Partial<GameState>;
   imagePrompt?: string | null;
   persona?: PersonaProposal;
+  imageStyle?: string;
   storySummary?: string;
   tokensRemaining?: number;
 }

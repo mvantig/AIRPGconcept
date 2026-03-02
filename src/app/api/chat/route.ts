@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         narrative: `I've created a character for the "${universe}" universe. Meet **${personaData.name}**!`,
         persona: personaData,
+        imageStyle: personaData.image_style || undefined,
         tokensRemaining: tokenResult.remaining,
       } as ChatApiResponse);
     }

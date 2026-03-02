@@ -103,6 +103,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
             chatHistory: updatedMessages,
             storySummary: updatedSummary,
             imageUrl: null,
+            imageStyle: persona.imageStyle,
           }),
         });
         if (res.ok) {
@@ -137,6 +138,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
           chatHistory: messages,
           storySummary,
           imageUrl: null,
+          imageStyle: persona.imageStyle,
           saveType: "manual",
           label: `${gameState.location} — HP ${gameState.hp}/${gameState.maxHp}`,
         }),
@@ -160,7 +162,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
       const res = await fetch("/api/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, gameMode }),
+        body: JSON.stringify({ prompt, imageStyle: persona.imageStyle }),
       });
       const data = await res.json();
       if (data.tokensRemaining !== undefined) {
@@ -174,7 +176,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
     } finally {
       setIsGeneratingImage(false);
     }
-  }, [gameMode]);
+  }, [persona.imageStyle]);
 
   const sendMessage = useCallback(
     async (userInput: string) => {

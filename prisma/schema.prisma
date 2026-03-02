@@ -31,6 +31,7 @@ model GameSession {
   chatHistory  String
   storySummary String   @default("")
   imageUrl     String?
+  imageStyle   String?
   saveType     String   @default("auto")
   label        String?
   createdAt    DateTime @default(now())

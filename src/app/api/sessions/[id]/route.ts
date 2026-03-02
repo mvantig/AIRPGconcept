@@ -21,15 +21,21 @@ export async function GET(
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
+  const persona = JSON.parse(gameSession.persona);
+  if (gameSession.imageStyle) {
+    persona.imageStyle = gameSession.imageStyle;
+  }
+
   return NextResponse.json({
     id: gameSession.id,
     universe: gameSession.universe,
     gameMode: gameSession.gameMode,
-    persona: JSON.parse(gameSession.persona),
+    persona,
     gameState: JSON.parse(gameSession.gameState),
     chatHistory: JSON.parse(gameSession.chatHistory),
     storySummary: gameSession.storySummary,
     imageUrl: gameSession.imageUrl,
+    imageStyle: gameSession.imageStyle,
     updatedAt: gameSession.updatedAt,
   });
 }

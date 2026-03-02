@@ -11,18 +11,28 @@ export function buildPersonaGenerationPrompt(
 
 Generate a historically plausible character persona who would have lived in this time and place. The character should be someone who could realistically exist in this era — their name, social status, occupation, and backstory must reflect real historical circumstances.
 
+Also determine the most historically and geographically accurate art style for illustrating scenes in this specific era and region. Think about what visual medium actually existed or best represents this period.
+
+Examples of image_style values:
+- "1890s American frontier, sepia-toned vintage photograph, daguerreotype quality"
+- "1550 Florence, Italian Renaissance oil painting, rich chiaroscuro, Caravaggio lighting"
+- "870 AD Scandinavia, Norse woodcut illustration with ink wash, aged parchment texture"
+- "1940s wartime Europe, gritty photojournalism, black and white with muted tones"
+- "Ancient Egypt, painted limestone relief, hieroglyphic border motifs, gold and lapis lazuli palette"
+
 Return ONLY a valid JSON object with this exact structure:
 {
   "name": "a historically authentic name for this era and region",
-  "backstory": "A compelling 2-3 sentence backstory grounded in the real social, political, and cultural context of the era. Reference actual historical events, customs, or conditions where possible.",
+  "backstory": "A compelling 2-3 sentence backstory grounded in the real social, political, and cultural context of the era.",
   "stats": {
     "stat_name_1": number_between_1_and_20,
     "stat_name_2": number_between_1_and_20,
     "stat_name_3": number_between_1_and_20
-  }
+  },
+  "image_style": "A specific art medium and visual style description matching this exact era and geography, 1-2 sentences"
 }
 
-Choose 3 stats that are appropriate for the historical period. For example, Ancient Rome might use "Rhetoric", "Combat", "Influence", while the Renaissance might use "Knowledge", "Artistry", "Connections".
+Choose 3 stats that are appropriate for the historical period.
 
 Return ONLY the JSON, no markdown fences, no extra text.`;
   }
@@ -31,7 +41,17 @@ Return ONLY the JSON, no markdown fences, no extra text.`;
 
 "${universe}"
 
-Generate a unique character persona for this universe. Return ONLY a valid JSON object with this exact structure:
+Generate a unique character persona for this universe. Also determine the most thematically fitting art style for illustrating scenes in this universe.
+
+Examples of image_style values:
+- "dark fantasy digital painting, highly detailed, dramatic lighting, rich colors"
+- "cyberpunk neon-lit digital art, rain-slicked streets, holographic glows, Blade Runner aesthetic"
+- "Studio Ghibli watercolor animation style, soft lighting, pastoral fantasy"
+- "retro pixel art, 16-bit RPG aesthetic, vibrant palette"
+- "grimdark oil painting, Warhammer-inspired, heavy brushstrokes, desaturated palette"
+- "space opera concept art, sweeping nebulae, chrome and glass, Mass Effect aesthetic"
+
+Return ONLY a valid JSON object with this exact structure:
 {
   "name": "character name",
   "backstory": "A compelling 2-3 sentence backstory",
@@ -39,10 +59,11 @@ Generate a unique character persona for this universe. Return ONLY a valid JSON 
     "stat_name_1": number_between_1_and_20,
     "stat_name_2": number_between_1_and_20,
     "stat_name_3": number_between_1_and_20
-  }
+  },
+  "image_style": "A specific art medium and visual style that best fits this universe, 1-2 sentences"
 }
 
-Choose 3 stats that are thematically appropriate for the universe. For example, a fantasy setting might use "Strength", "Intelligence", "Charisma", while a sci-fi setting might use "Tech", "Piloting", "Diplomacy".
+Choose 3 stats that are thematically appropriate for the universe.
 
 Return ONLY the JSON, no markdown fences, no extra text.`;
 }

@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     chatHistory,
     storySummary,
     imageUrl,
+    imageStyle,
     saveType = "auto",
     label,
   } = body;
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
             storySummary: storySummary || "",
             persona: JSON.stringify(personaToSave),
             imageUrl: imageUrl && imageUrl.length < 1000 ? imageUrl : null,
+            imageStyle: imageStyle || undefined,
           },
         });
         return NextResponse.json({ sessionId: updated.id });
@@ -112,6 +114,7 @@ export async function POST(request: NextRequest) {
         chatHistory: JSON.stringify(chatHistory || []),
         storySummary: storySummary || "",
         imageUrl: imageUrl && imageUrl.length < 1000 ? imageUrl : null,
+        imageStyle: imageStyle || null,
         saveType,
         label: label || null,
       },

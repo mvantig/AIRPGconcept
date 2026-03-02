@@ -11,6 +11,7 @@ interface PersonaSetupProps {
 
 export default function PersonaSetup({ universe, gameMode, onConfirm }: PersonaSetupProps) {
   const [persona, setPersona] = useState<PersonaProposal | null>(null);
+  const [imageStyle, setImageStyle] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [modifyInput, setModifyInput] = useState("");
   const [modifying, setModifying] = useState(false);
@@ -52,6 +53,11 @@ export default function PersonaSetup({ universe, gameMode, onConfirm }: PersonaS
       const data = await res.json();
       if (data.persona) {
         setPersona(data.persona);
+        if (data.imageStyle) {
+          setImageStyle(data.imageStyle);
+        } else if (data.persona.image_style) {
+          setImageStyle(data.persona.image_style);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate persona");
@@ -114,7 +120,7 @@ export default function PersonaSetup({ universe, gameMode, onConfirm }: PersonaS
           prompt: gameMode === "historical"
             ? `Portrait of ${persona.name}, a historical figure from ${universe}. ${persona.backstory}. Close-up character portrait in period-accurate clothing, facing the viewer`
             : `Portrait of ${persona.name}, an RPG character from the universe "${universe}". ${persona.backstory}. Close-up character portrait, facing the viewer`,
-          gameMode,
+          imageStyle,
         }),
       });
 
@@ -124,9 +130,9 @@ export default function PersonaSetup({ universe, gameMode, onConfirm }: PersonaS
         portraitUrl = data.imageUrl || undefined;
       }
 
-      onConfirm({ ...persona, portraitUrl });
+      onConfirm({ ...persona, portraitUrl, imageStyle });
     } catch {
-      onConfirm({ ...persona });
+      onConfirm({ ...persona, imageStyle });
     } finally {
       setGeneratingPortrait(false);
     }
