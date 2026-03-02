@@ -32,6 +32,7 @@ model GameSession {
   storySummary String   @default("")
   imageUrl     String?
   imageStyle   String?
+  currentGoal  String?
   saveType     String   @default("auto")
   label        String?
   createdAt    DateTime @default(now())

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as ChatApiRequest;
-    const { phase, messages, gameState, persona, universe, gameMode = "fictional", storySummary, userInput } = body;
+    const { phase, messages, gameState, persona, universe, gameMode = "fictional", storySummary, currentGoal, userInput } = body;
 
     if (phase === "persona_generate") {
       const prompt = buildPersonaGenerationPrompt(universe, gameMode);
@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
         persona,
         gameState,
         storySummary,
-        gameMode
+        gameMode,
+        currentGoal
       );
 
       const last5 = messages.slice(-5);
@@ -130,6 +131,8 @@ export async function POST(request: NextRequest) {
         imagePrompt: parsed.image_prompt,
         storySummary: newSummary,
         tokensRemaining: tokenResult.remaining,
+        goal: parsed.goal || undefined,
+        goalProgress: parsed.goal_progress ?? undefined,
       } as ChatApiResponse);
     }
 

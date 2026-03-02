@@ -36,6 +36,7 @@ export async function GET(
     storySummary: gameSession.storySummary,
     imageUrl: gameSession.imageUrl,
     imageStyle: gameSession.imageStyle,
+    currentGoal: gameSession.currentGoal ? JSON.parse(gameSession.currentGoal) : null,
     updatedAt: gameSession.updatedAt,
   });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { ChatMessage, GameState, Persona, ChatApiResponse, GameMode } from "@/types/game";
+import type { ChatMessage, GameState, GameGoal, Persona, ChatApiResponse, GameMode } from "@/types/game";
 import ChatPanel from "./ChatPanel";
 import IllustrationPanel from "./IllustrationPanel";
 import StatusBar from "./StatusBar";
@@ -13,6 +13,7 @@ export interface LoadedSession {
   chatHistory: ChatMessage[];
   storySummary: string;
   imageUrl: string | null;
+  currentGoal?: GameGoal | null;
 }
 
 interface GameScreenProps {
@@ -69,6 +70,9 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
   const [sessionId, setSessionId] = useState<string | null>(
     loadedSession?.sessionId ?? null
   );
+  const [currentGoal, setCurrentGoal] = useState<GameGoal | null>(
+    loadedSession?.currentGoal ?? null
+  );
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const saveInFlight = useRef(false);
@@ -84,7 +88,8 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
     async (
       updatedState: GameState,
       updatedMessages: ChatMessage[],
-      updatedSummary: string
+      updatedSummary: string,
+      goalToSave?: GameGoal | null
     ) => {
       if (saveInFlight.current) return;
       saveInFlight.current = true;
@@ -104,6 +109,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
             storySummary: updatedSummary,
             imageUrl: null,
             imageStyle: persona.imageStyle,
+            currentGoal: goalToSave !== undefined ? goalToSave : currentGoal,
           }),
         });
         if (res.ok) {
@@ -118,7 +124,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
         saveInFlight.current = false;
       }
     },
-    [sessionId, universe, gameMode, persona]
+    [sessionId, universe, gameMode, persona, currentGoal]
   );
 
   const manualSave = useCallback(async () => {
@@ -139,6 +145,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
           storySummary,
           imageUrl: null,
           imageStyle: persona.imageStyle,
+          currentGoal,
           saveType: "manual",
           label: `${gameState.location} — HP ${gameState.hp}/${gameState.maxHp}`,
         }),
@@ -154,7 +161,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
       setSaveNotice("Save failed");
     }
     setTimeout(() => setSaveNotice(null), 2000);
-  }, [initialized, messages, universe, gameMode, persona, gameState, storySummary]);
+  }, [initialized, messages, universe, gameMode, persona, gameState, storySummary, currentGoal]);
 
   const generateImage = useCallback(async (prompt: string) => {
     setIsGeneratingImage(true);
@@ -202,6 +209,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
             universe,
             gameMode,
             storySummary,
+            currentGoal,
             userInput,
           }),
         });
@@ -247,7 +255,16 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
           generateImage(data.imagePrompt);
         }
 
-        saveGame(newState, allMessages, newSummary);
+        let updatedGoal = currentGoal;
+        if (data.goal) {
+          updatedGoal = data.goal;
+          setCurrentGoal(data.goal);
+        } else if (data.goalProgress != null && currentGoal) {
+          updatedGoal = { ...currentGoal, progress: data.goalProgress };
+          setCurrentGoal(updatedGoal);
+        }
+
+        saveGame(newState, allMessages, newSummary, updatedGoal);
       } catch (err) {
         const errorMsg: ChatMessage = {
           id: createId(),
@@ -260,7 +277,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
         setIsLoading(false);
       }
     },
-    [messages, gameState, persona, universe, gameMode, storySummary, generateImage, saveGame]
+    [messages, gameState, persona, universe, gameMode, storySummary, currentGoal, generateImage, saveGame]
   );
 
   const startAdventure = useCallback(async () => {
@@ -280,6 +297,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
           universe,
           gameMode,
           storySummary: "",
+          currentGoal: null,
           userInput:
             gameMode === "historical"
               ? "Begin the adventure. Describe the opening historical scene vividly with accurate period details — architecture, people, sounds, smells. Set up an engaging initial situation rooted in real events of this era."
@@ -321,7 +339,13 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
         generateImage(`A scenic establishing shot of ${location} in the universe of ${universe}`);
       }
 
-      saveGame(newState, allMessages, "");
+      let initialGoal: GameGoal | null = null;
+      if (data.goal) {
+        initialGoal = data.goal;
+        setCurrentGoal(data.goal);
+      }
+
+      saveGame(newState, allMessages, "", initialGoal);
     } catch {
       const errorMsg: ChatMessage = {
         id: createId(),
@@ -378,7 +402,7 @@ export default function GameScreen({ persona, universe, gameMode, loadedSession,
 
   return (
     <div className="h-screen flex flex-col">
-      <StatusBar persona={persona} gameState={gameState} tokens={tokens} />
+      <StatusBar persona={persona} gameState={gameState} tokens={tokens} goal={currentGoal} />
 
       {isMobile && (
         <div

@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     storySummary,
     imageUrl,
     imageStyle,
+    currentGoal,
     saveType = "auto",
     label,
   } = body;
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
             persona: JSON.stringify(personaToSave),
             imageUrl: imageUrl && imageUrl.length < 1000 ? imageUrl : null,
             imageStyle: imageStyle || undefined,
+            currentGoal: currentGoal ? JSON.stringify(currentGoal) : undefined,
           },
         });
         return NextResponse.json({ sessionId: updated.id });
@@ -115,6 +117,7 @@ export async function POST(request: NextRequest) {
         storySummary: storySummary || "",
         imageUrl: imageUrl && imageUrl.length < 1000 ? imageUrl : null,
         imageStyle: imageStyle || null,
+        currentGoal: currentGoal ? JSON.stringify(currentGoal) : null,
         saveType,
         label: label || null,
       },

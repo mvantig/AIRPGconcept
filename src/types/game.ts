@@ -26,10 +26,19 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface GameGoal {
+  title: string;
+  description: string;
+  timeframe: string;
+  progress: number;
+}
+
 export interface LLMResponse {
   narrative: string;
   state_updates: Partial<GameState>;
   image_prompt: string | null;
+  goal?: GameGoal | null;
+  goal_progress?: number | null;
 }
 
 export interface PersonaProposal {
@@ -55,6 +64,7 @@ export interface ChatApiRequest {
   universe: string;
   gameMode: GameMode;
   storySummary: string;
+  currentGoal?: GameGoal | null;
   phase: "persona_generate" | "persona_modify" | "game_turn";
   userInput?: string;
 }
@@ -67,6 +77,8 @@ export interface ChatApiResponse {
   imageStyle?: string;
   storySummary?: string;
   tokensRemaining?: number;
+  goal?: GameGoal | null;
+  goalProgress?: number | null;
 }
 
 export interface ImageApiRequest {

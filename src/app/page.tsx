@@ -65,6 +65,7 @@ export default function Home() {
         chatHistory: data.chatHistory,
         storySummary: data.storySummary,
         imageUrl: data.imageUrl,
+        currentGoal: data.currentGoal,
       });
       setPhase("playing");
     } catch {
