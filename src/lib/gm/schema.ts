@@ -89,7 +89,12 @@ const hex = z
 
 export const turnParser = z.object({
   narration: s(),
-  chapterTitle: z.string().nullable().catch(null),
+  // The UI already prints "Chapter IV", so drop a numbering prefix the model adds itself.
+  chapterTitle: z
+    .string()
+    .nullable()
+    .catch(null)
+    .transform((t) => (t ? t.replace(/^\s*chapter\s+[\divxlc]+\s*[:.\-–—]\s*/i, "").trim() || null : null)),
   chronicle: s(),
   effects: z
     .object({

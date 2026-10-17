@@ -1,11 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
-import type { GameMode, HeroDraft, Roll, Tone, TurnEvent, TurnRequest, World } from "@/lib/types";
-import { STAT_KEYS } from "@/lib/types";
-import { DIFFICULTY_DC, OUTCOME_LABEL, rollCheck } from "@/lib/engine/dice";
+import type { GameMode, HeroDraft, Tone, TurnEvent, TurnRequest, World } from "@/lib/types";
 import { GM_RULES, turnContext, worldBible, worldPrompt } from "./prompts";
 import { TURN_JSON_SCHEMA, WORLD_JSON_SCHEMA, parseTurn, parseWorld } from "./schema";
 import { partialStringField } from "./partial";
+import { NarratorError } from "./errors";
+import { INVALID_ROLL, MAX_ROLLS_PER_TURN, NO_MORE_ROLLS, ROLL_INPUT_SCHEMA, ROLL_TOOL_DESCRIPTION, engineRoll, rollInput, rollResultText } from "./rolls";
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -13,7 +12,6 @@ const MODEL = process.env.REALMWEAVER_MODEL || "claude-opus-5-5";
 const TURN_EFFORT = (process.env.REALMWEAVER_EFFORT as Effort | undefined) || "low";
 // Server-side fallback reroutes a request a safety classifier declines to a model that can serve it.
 const BETAS: Anthropic.Beta.AnthropicBeta[] = ["server-side-fallback-2026-07-01"];
-const MAX_ROLLS_PER_TURN = 2;
 
 let client: Anthropic | null = null;
 function anthropic(): Anthropic {
@@ -21,11 +19,11 @@ function anthropic(): Anthropic {
   return client;
 }
 
-export function narratorAvailable(): boolean {
+export function claudeAvailable(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 }
 
-export async function createWorld(
+export async function createClaudeWorld(
   mode: GameMode,
   seed: string,
   tone: Tone,
@@ -45,43 +43,16 @@ export async function createWorld(
   return parseWorld(JSON.parse(text), { mode, seed, tone });
 }
 
-const rollInput = z.object({
-  stat: z.enum(STAT_KEYS),
-  difficulty: z.enum(["easy", "moderate", "hard", "heroic"]),
-  advantage: z.enum(["none", "advantage", "disadvantage"]),
-  reason: z.string(),
-});
-
 const ROLL_TOOL: Anthropic.Beta.BetaTool = {
   name: "roll_check",
-  description:
-    "Roll a d20 check for an uncertain action with stakes. The engine adds the hero's stat modifier and compares against the difficulty. Use advantage when the hero has a clear edge (the right tool, surprise, help) and disadvantage when hampered (wounded, outnumbered, a condition applies). Returns the result, which you must honor in the narration.",
+  description: ROLL_TOOL_DESCRIPTION,
   strict: true,
   eager_input_streaming: true,
-  input_schema: {
-    type: "object",
-    properties: {
-      stat: { type: "string", enum: [...STAT_KEYS], description: "might, grace, wits or heart" },
-      difficulty: { type: "string", enum: ["easy", "moderate", "hard", "heroic"] },
-      advantage: { type: "string", enum: ["none", "advantage", "disadvantage"] },
-      reason: { type: "string", description: "Short description of what is being attempted, shown to the player." },
-    },
-    required: ["stat", "difficulty", "advantage", "reason"],
-    additionalProperties: false,
-  },
+  input_schema: ROLL_INPUT_SCHEMA as unknown as Anthropic.Beta.BetaTool["input_schema"],
 };
 
-export class NarratorError extends Error {
-  constructor(
-    message: string,
-    public retryable: boolean,
-  ) {
-    super(message);
-  }
-}
-
 /** Run one turn: optional dice via tool calls, then a streamed, structured resolution. */
-export async function* runTurn({ game, action, roll }: TurnRequest): AsyncGenerator<TurnEvent> {
+export async function* runClaudeTurn({ game, action, roll }: TurnRequest): AsyncGenerator<TurnEvent> {
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     { type: "text", text: GM_RULES },
     { type: "text", text: worldBible(game.world), cache_control: { type: "ephemeral" } },
@@ -90,7 +61,7 @@ export async function* runTurn({ game, action, roll }: TurnRequest): AsyncGenera
   let rolls = roll ? 1 : 0;
 
   for (let iteration = 0; iteration < 4; iteration++) {
-    const canRoll = rolls < MAX_ROLLS_PER_TURN && !roll;
+    const canRoll = rolls < MAX_ROLLS_PER_TURN && !roll && game.turn > 0;
     const stream = anthropic().beta.messages.stream({
       model: MODEL,
       max_tokens: 16000,
@@ -139,7 +110,7 @@ export async function* runTurn({ game, action, roll }: TurnRequest): AsyncGenera
             type: "tool_result",
             tool_use_id: use.id,
             is_error: true,
-            content: rolls >= MAX_ROLLS_PER_TURN ? "No more checks this turn. Narrate with what you have." : "Invalid check request.",
+            content: rolls >= MAX_ROLLS_PER_TURN ? NO_MORE_ROLLS : INVALID_ROLL,
           });
           continue;
         }
@@ -149,7 +120,7 @@ export async function* runTurn({ game, action, roll }: TurnRequest): AsyncGenera
         results.push({
           type: "tool_result",
           tool_use_id: use.id,
-          content: `${result.statLabel} ${result.modifier >= 0 ? "+" : ""}${result.modifier} vs ${result.dc}: rolled ${result.dice.join(" & ")} → ${result.total}. ${OUTCOME_LABEL[result.outcome].toUpperCase()}.`,
+          content: rollResultText(result),
         });
       }
       messages.push({ role: "user", content: results });
@@ -166,17 +137,6 @@ export async function* runTurn({ game, action, roll }: TurnRequest): AsyncGenera
   throw new NarratorError("The Weaver couldn't settle on what happens. Try again.", true);
 }
 
-function engineRoll(game: TurnRequest["game"], input: z.infer<typeof rollInput>): Roll {
-  return rollCheck({
-    stat: input.stat,
-    statLabel: game.world.statLabels[input.stat],
-    modifier: game.hero.stats[input.stat],
-    dc: DIFFICULTY_DC[input.difficulty],
-    advantage: input.advantage,
-    reason: input.reason,
-  });
-}
-
 function textOf(content: Anthropic.Beta.BetaContentBlock[]): string {
   return content
     .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
@@ -184,12 +144,11 @@ function textOf(content: Anthropic.Beta.BetaContentBlock[]): string {
     .join("");
 }
 
-export function describeError(err: unknown): { message: string; retryable: boolean } {
-  if (err instanceof NarratorError) return { message: err.message, retryable: err.retryable };
+/** Claude-specific errors; anything else returns null for the shared handler. */
+export function describeClaudeError(err: unknown): { message: string; retryable: boolean } | null {
   if (err instanceof Anthropic.AuthenticationError) return { message: "The Claude API key was rejected. Check ANTHROPIC_API_KEY.", retryable: false };
   if (err instanceof Anthropic.RateLimitError) return { message: "The Weaver is catching their breath (rate limited). Try again in a moment.", retryable: true };
   if (err instanceof Anthropic.APIConnectionError) return { message: "Couldn't reach the Weaver. Check your connection and try again.", retryable: true };
   if (err instanceof Anthropic.APIError) return { message: `The Weaver stumbled (${err.status ?? "error"}). Try again.`, retryable: true };
-  if (err instanceof SyntaxError) return { message: "The Weaver's answer came back garbled. Try again.", retryable: true };
-  return { message: "Something went wrong. Try again.", retryable: true };
+  return null;
 }

@@ -30,7 +30,7 @@ export function useTale(initial: Game, painter: boolean) {
 
   const gameRef = useRef(game);
   const abortRef = useRef<AbortController | null>(null);
-  const startedRef = useRef(false);
+  const portraitRef = useRef(false);
   const snapshotsRef = useRef<Game[]>([]);
 
   const commit = useCallback((next: Game) => {
@@ -136,14 +136,16 @@ export function useTale(initial: Game, painter: boolean) {
     [commit, paintScene],
   );
 
-  // Open the story automatically the first time a tale is played.
+  // Open the story automatically the first time a tale is played. Unmounting aborts the
+  // request (React's dev double-mount does this too), so the next mount asks again;
+  // the portrait is only ever requested once.
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    if (initial.turn === 0 && initial.log.length === 0) {
-      void narrate(OPENING, null, true);
+    if (initial.turn !== 0 || initial.log.length !== 0) return;
+    if (!portraitRef.current) {
+      portraitRef.current = true;
       void paintPortrait();
     }
+    if (gameRef.current.turn === 0) void narrate(OPENING, null, true);
   }, [initial, narrate, paintPortrait]);
 
   const choose = useCallback(

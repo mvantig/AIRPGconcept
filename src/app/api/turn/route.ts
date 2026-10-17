@@ -1,6 +1,5 @@
 import type { TurnEvent, TurnRequest } from "@/lib/types";
-import { describeError, narratorAvailable, runTurn } from "@/lib/gm/claude";
-import { runDemoTurn } from "@/lib/gm/demo";
+import { describeError, narratorKind, runTurn } from "@/lib/gm/narrator";
 
 export const maxDuration = 120;
 
@@ -10,7 +9,7 @@ export async function POST(request: Request) {
     return new Response("Bad request", { status: 400 });
   }
   const turn: TurnRequest = { game: req.game, action: req.action.trim().slice(0, 500), roll: req.roll ?? null };
-  const source = narratorAvailable() ? runTurn(turn) : runDemoTurn(turn);
+  const source = runTurn(narratorKind(), turn);
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({

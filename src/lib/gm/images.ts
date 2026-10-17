@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image-preview";
+const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
 
 let client: GoogleGenAI | null = null;
 

@@ -6,7 +6,7 @@ An illustrated, AI-narrated role-playing game. Name any world, real or imagined,
 
 ## What makes it work
 
-- **A narrator with rules.** Claude writes the story, but a small rules engine owns the numbers. Risky actions roll a d20 plus one of four stats against a difficulty, with five outcomes from critical success through *success at a cost* to critical failure. The narrator can only change health, gold, items and quests within the engine's limits, so typing "I find a legendary sword" doesn't work.
+- **A narrator with rules.** Claude or Gemini writes the story, but a small rules engine owns the numbers. Risky actions roll a d20 plus one of four stats against a difficulty, with five outcomes from critical success through *success at a cost* to critical failure. The narrator can only change health, gold, items and quests within the engine's limits, so typing "I find a legendary sword" doesn't work.
 - **Choices with honest odds.** Every turn offers three ways forward with the stat they use, your chance of success and how risky they are. You can always type your own action instead.
 - **Fate.** Spend a fate point to reroll a failure. Levelling up restores fate and lets you raise a stat.
 - **Memory.** Every turn adds a line to the Chronicle, and the narrator keeps a Codex of the people, places and factions you meet. Both are sent back each turn, so the story stays consistent over long campaigns.
@@ -30,19 +30,21 @@ npm run dev                  # http://localhost:3000
 
 | Variable | Purpose |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Claude narrates turns and builds worlds. Without it, the demo narrator runs. |
-| `REALMWEAVER_MODEL` | Narrator model, default `claude-opus-5-5`. |
-| `REALMWEAVER_EFFORT` | Effort per turn, default `low` for snappy turns. World creation uses `medium`. |
-| `GEMINI_API_KEY` | Optional. Paints scene illustrations and the hero portrait. |
-| `GEMINI_IMAGE_MODEL` | Image model, default `gemini-3.1-flash-image-preview`. |
+| `ANTHROPIC_API_KEY` | Claude narrates turns and builds worlds. |
+| `GEMINI_API_KEY` | Paints scene illustrations and the hero portrait. Gemini also narrates when there is no Claude key. |
+| `REALMWEAVER_NARRATOR` | Optional: `claude`, `gemini` or `demo` to pick the narrator when both keys are set. With neither key, the demo narrator runs. |
+| `REALMWEAVER_MODEL` | Claude model, default `claude-opus-5-5`. |
+| `GEMINI_MODEL` | Gemini narrator model, default `gemini-3.8-flash`. |
+| `REALMWEAVER_EFFORT` | Thinking effort per turn, default `low` for snappy turns. World creation uses `medium`. |
+| `GEMINI_IMAGE_MODEL` | Image model, default `gemini-3.1-flash-image`. |
 
 Other scripts: `npm test` (rules engine and parsers), `npm run typecheck`, `npm run lint`, `npm run build`.
 
 ## How a turn works
 
 1. The player picks a choice or types an action. A chosen action with a stat is rolled immediately in the browser, so the dice animate while the narrator writes. A failed roll can be rerolled with fate.
-2. `POST /api/turn` streams Server-Sent Events. For typed actions, Claude may call the `roll_check` tool; the server rolls and returns the result, and Claude must honor it.
-3. Claude answers with structured output: narration plus effects, quest and codex updates, a scene description, mood and the next three choices. Narration is streamed out of the partial JSON as it is generated.
+2. `POST /api/turn` streams Server-Sent Events. For typed actions, the narrator may call the `roll_check` tool; the server rolls and returns the result, and Claude must honor it.
+3. The narrator answers with structured output: narration plus effects, quest and codex updates, a scene description, mood and the next three choices. Narration is streamed out of the partial JSON as it is generated.
 4. The client applies the result through the rules engine (`applyResolution`), which clamps and validates everything, awards quest XP, handles level ups and death, then saves.
 5. If the scene changed, the illustration is painted in the background and cross-fades in.
 
@@ -52,8 +54,8 @@ src/
 ├── components/     Title, Loom (world), Weaving, Hero, play/ (PlayScreen, Hud, StoryLog, Composer, Dice, Journal)
 └── lib/
     ├── engine/     dice and rules: the source of truth for every number
-    ├── gm/         Claude narrator, prompts, schemas, demo narrator, Gemini painter
+    ├── gm/         Claude and Gemini narrators, prompts, schemas, demo narrator, Gemini painter
     └── client/     IndexedDB saves, streaming client, theming
 ```
 
-The model call is in `src/lib/gm/claude.ts`: adaptive thinking, structured outputs, one cached system prompt (rules plus world bible) and server-side refusal fallback.
+`src/lib/gm/narrator.ts` picks the narrator. The Claude call (`claude.ts`) uses adaptive thinking, structured outputs, one cached system prompt (rules plus world bible) and server-side refusal fallback. The Gemini call (`gemini.ts`) sends the same prompts, JSON schema and `roll_check` function with low thinking.

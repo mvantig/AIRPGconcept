@@ -114,16 +114,18 @@ export function TitleScreen({ saves, status, onNew, onContinue, onDelete, onExpo
   );
 }
 
+const NARRATOR_NAME = { claude: "Claude", gemini: "Gemini", demo: "the demo" } as const;
+
 export function NarratorBadge({ status }: { status: Status | null }) {
   if (!status) return <span className="h-7 w-28 rounded-full shimmer" />;
   const demo = status.narrator === "demo";
   return (
     <span
       className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-black/30 px-3 py-1.5 text-xs text-muted backdrop-blur"
-      title={demo ? "No ANTHROPIC_API_KEY set: a hand-written demo narrator is running." : "Claude is narrating."}
+      title={demo ? "No API key set: a hand-written demo narrator is running." : `${NARRATOR_NAME[status.narrator]} is narrating.`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${demo ? "bg-[var(--color-quest)]" : "bg-[var(--color-good)]"}`} />
-      {demo ? "Demo narrator" : "Narrated by Claude"}
+      {demo ? "Demo narrator" : `Narrated by ${NARRATOR_NAME[status.narrator]}`}
       {status.painter && <span className="text-faint">· Illustrated</span>}
     </span>
   );

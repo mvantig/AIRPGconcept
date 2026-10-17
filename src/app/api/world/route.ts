@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createWorld, describeError, narratorAvailable } from "@/lib/gm/claude";
+import { createWorld, describeError, narratorKind } from "@/lib/gm/narrator";
 import { demoWorld } from "@/lib/gm/demo";
 
 export const maxDuration = 120;
@@ -16,12 +16,13 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Describe your world in a few words first." }, { status: 400 });
   const { mode, seed, tone } = parsed.data;
 
-  if (!narratorAvailable()) {
+  const kind = narratorKind();
+  if (kind === "demo") {
     await new Promise((r) => setTimeout(r, 1800));
     return NextResponse.json({ ...demoWorld(mode, seed, tone), demo: true });
   }
   try {
-    const result = await createWorld(mode, seed, tone);
+    const result = await createWorld(kind, mode, seed, tone);
     if (result.heroes.length === 0) throw new SyntaxError("no heroes");
     return NextResponse.json({ ...result, demo: false });
   } catch (err) {

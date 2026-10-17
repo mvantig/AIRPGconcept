@@ -1,7 +1,7 @@
 import type { Game, GameMode, HeroDraft, Roll, Tone, TurnEvent, World } from "@/lib/types";
 
 export interface Status {
-  narrator: "claude" | "demo";
+  narrator: "claude" | "gemini" | "demo";
   painter: boolean;
 }
 

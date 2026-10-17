@@ -621,7 +621,7 @@ function freeform(world: World, action: string, roll: Roll | null, turn: number)
   return {
     narration:
       lead(roll) +
-      `You act, and the world answers. Word of what you've done travels faster than you do, and by nightfall ${faction} knows your name.\n\nThis is where the demo's hand-written pages run out. Add an ANTHROPIC_API_KEY and the Weaver will take it from here, remembering every name, debt and promise so far.`,
+      `You act, and the world answers. Word of what you've done travels faster than you do, and by nightfall ${faction} knows your name.\n\nThis is where the demo's hand-written pages run out. Add a Claude or Gemini API key and the Weaver will take it from here, remembering every name, debt and promise so far.`,
     chapterTitle: null,
     chronicle: `You pressed on: ${action.slice(0, 80)}.`,
     effects: {
